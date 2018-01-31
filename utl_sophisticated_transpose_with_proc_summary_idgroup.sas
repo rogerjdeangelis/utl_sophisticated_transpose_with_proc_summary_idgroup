@@ -288,4 +288,15 @@ NOTE: The data set WORK.RPTXPO has 2 observations and 7 variables.
 NOTE: PROCEDURE REPORT used (Total process time):
       real time           0.16 seconds
 
+%macro utl_rptRen(nrm,acx);
+%let rc=
+ %sysfunc(dosubl('
+   proc sql;
+     select cats("_C",put(monotonic()+1,1.),"_ =_",lon) into :nams separated by " "
+     from
+      (select distinct &acx as lon length=5 from &nrm)
+   ;quit;
+   '));
+   &nams
+%mend utl_rptRen;
 
