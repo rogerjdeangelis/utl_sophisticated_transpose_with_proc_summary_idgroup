@@ -22,8 +22,8 @@ Sophisticated transpose with proc summary idgroup.  Keywords: sas sql join merge
        2, No hardcoding
        3. utl_gather macro
        4. Related applications of proc summary idgroup (data _null_ and fried egg?)
-       5, Where proc corresp fits in (summary can not sort-transpose-and-summarize like this)
-
+       5. Where proc corresp fits in (summary can not sort-transpose-and-summarize like this)
+       6. Where proc report fits in (summary can not sort-transpose-and-summarize like this)
     see
     https://goo.gl/8mF5mJ
     https://communities.sas.com/t5/Base-SAS-Programming/Creating-changing-variable-names-within-do-loop/m-p/432026
@@ -232,4 +232,77 @@ Sophisticated transpose with proc summary idgroup.  Keywords: sas sql join merge
        Sum      2      5      3      4      4      1      19
 
 
+    6. proc report
+    ==============
+    * you need macro below;
+
+    proc report data=sashelp.class
+         nowd missing      /* CALLING RENAME MACRO */
+         out=rptXpo (rename=(%utl_rptRen(sashelp.class,age)) drop=_break_);
+     cols sex age, N;
+     define sex / group "year" width=12;
+     define age / group across "" width=12;
+     run;quit;
+
+    %symdel nams / nowarn;
+    %macro utl_rptRen(nrm,acx);
+    %let nams=;
+    %let rc=
+     %sysfunc(dosubl('
+       %symdel nams / nowarn;
+       proc sql;
+         select cats("_C",put(monotonic()+1,1.),"_ =_",lon) into :nams separated by " "
+         from
+          (select distinct &acx as lon length=5 from &nrm)
+       ;quit;
+       '));
+       &nams
+    %mend utl_rptRen;
+
+
+    4755   proc report data=sashelp.class
+    4756        nowd missing      /* CALLING RENAME MACRO */
+    4757        out=rptXpo
+    MLOGIC(UTL_RPTREN):  Beginning execution.
+    SYMBOLGEN:  Macro variable ACX resolves to age
+    SYMBOLGEN:  Macro variable NRM resolves to sashelp.class
+    NOTE: PROCEDURE SQL used (Total process time):
+          real time           0.04 seconds
+          user cpu time       0.03 seconds
+          system cpu time     0.01 seconds
+          memory              3743.73k
+          OS Memory           23024.00k
+          Timestamp           01/30/2018 09:04:35 PM
+          Step Count                        1027  Switch Count  0
+
+
+    4757 !                 (rename=(%utl_rptRen(sashelp.class,age)) drop=_break_);
+    MLOGIC(UTL_RPTREN):  Parameter NRM has value sashelp.class
+    MLOGIC(UTL_RPTREN):  Parameter ACX has value age
+    MLOGIC(UTL_RPTREN):  %LET (variable name is NAMS)
+    MLOGIC(UTL_RPTREN):  %LET (variable name is RC)
+    SYMBOLGEN:  Macro variable NAMS resolves to _C2_ =_11 _C3_ =_12 _C4_ =_13 _C5_ =_14 _C6_ =_15 _C7_ =_16
+    MLOGIC(UTL_RPTREN):  Ending execution.
+    MPRINT(UTL_RPTREN):  _C2_ =_11 _C3_ =_12 _C4_ =_13 _C5_ =_14 _C6_ =_15 _C7_ =_16
+    4758    cols sex age, N;
+    4759    define sex / group "year" width=12;
+    4760    define age / group across "" width=12;
+    4761    run;
+
+    NOTE: There were 19 observations read from the data set SASHELP.CLASS.
+    NOTE: The data set WORK.RPTXPO has 2 observations and 7 variables.
+    NOTE: PROCEDURE REPORT used (Total process time):
+          real time           0.16 seconds
+
+    %macro utl_rptRen(nrm,acx);
+    %let rc=
+     %sysfunc(dosubl('
+       proc sql;
+         select cats("_C",put(monotonic()+1,1.),"_ =_",lon) into :nams separated by " "
+         from
+          (select distinct &acx as lon length=5 from &nrm)
+       ;quit;
+       '));
+       &nams
+    %mend utl_rptRen;
 
